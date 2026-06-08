@@ -83,6 +83,81 @@ public class KubernetesService(IOptions<KubernetesSettings> options, ILogger<Kub
         }
     }
 
+    public async Task DeleteShopAsync(Store store, CancellationToken cancellationToken = default)
+    {
+        if (!_settings.Enabled)
+        {
+            logger.LogInformation("Kubernetes integration disabled. Skipping Shop CR deletion for store {StoreId}.", store.Id);
+            return;
+        }
+
+        var client = BuildClient();
+        var namespaceName = BuildNamespace(store.UserId);
+
+        await DeleteCustomResourceIfExistsAsync(
+            client, _settings.Group, _settings.Version, namespaceName, _settings.Plural,
+            $"shop-{store.Id}", cancellationToken);
+
+        logger.LogInformation("Deleted Shop CR for store {StoreId}.", store.Id);
+    }
+
+    public async Task DeleteDatabaseAsync(Store store, CancellationToken cancellationToken = default)
+    {
+        if (!_settings.Enabled)
+        {
+            logger.LogInformation("Kubernetes integration disabled. Skipping database CR deletion for store {StoreId}.", store.Id);
+            return;
+        }
+
+        var client = BuildClient();
+        var namespaceName = BuildNamespace(store.UserId);
+
+        if (store.DatabaseType == DatabaseType.Standard)
+        {
+            await DeleteCustomResourceIfExistsAsync(
+                client, _settings.Cnpg.Group, _settings.Cnpg.Version, namespaceName, _settings.Cnpg.Plural,
+                CnpgClusterName(store.Id), cancellationToken);
+        }
+        else
+        {
+            await DeleteCustomResourceIfExistsAsync(
+                client, _settings.Redb.Group, _settings.Redb.Version, namespaceName, _settings.Redb.Plural,
+                RedbName(store.Id), cancellationToken);
+
+            await DeleteSecretIfExistsAsync(client, namespaceName, RedbSecretName(store.Id), cancellationToken);
+        }
+
+        logger.LogInformation("Deleted database CR for store {StoreId}.", store.Id);
+    }
+
+    private async Task DeleteCustomResourceIfExistsAsync(
+        IKubernetes client, string group, string version, string namespaceName, string plural, string name,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            await client.CustomObjects.DeleteNamespacedCustomObjectAsync(
+                group, version, namespaceName, plural, name, cancellationToken: cancellationToken);
+        }
+        catch (k8s.Autorest.HttpOperationException ex) when (ex.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            logger.LogDebug("Custom resource {Name} not found in {Namespace}, skipping.", name, namespaceName);
+        }
+    }
+
+    private async Task DeleteSecretIfExistsAsync(
+        IKubernetes client, string namespaceName, string secretName, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await client.CoreV1.DeleteNamespacedSecretAsync(secretName, namespaceName, cancellationToken: cancellationToken);
+        }
+        catch (k8s.Autorest.HttpOperationException ex) when (ex.Response.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            logger.LogDebug("Secret {Name} not found in {Namespace}, skipping.", secretName, namespaceName);
+        }
+    }
+
     private string BuildNamespace(Guid userId) =>
         $"{_settings.NamespacePrefix}-{userId}";
 

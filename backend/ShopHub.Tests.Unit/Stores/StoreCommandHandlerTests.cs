@@ -93,7 +93,7 @@ public class StoreCommandHandlerTests
     }
 
     [Fact]
-    public async Task DeleteStore_ShouldRemoveStore_WhenExists()
+    public async Task DeleteStore_ShouldMarkAsDeleting_WhenExists()
     {
         using var db = DbContextFactory.Create();
         var store = Store.Create("Shop", StoreAvailability.Standard, "0xABC", DatabaseType.Standard, _userId);
@@ -104,7 +104,7 @@ public class StoreCommandHandlerTests
         var result = await handler.Handle(new DeleteStoreCommand(store.Id, _userId), CancellationToken.None);
 
         result.Should().BeTrue();
-        db.Stores.Should().BeEmpty();
+        db.Stores.Should().ContainSingle(s => s.Status == StoreStatus.Deleting);
     }
 
     [Fact]

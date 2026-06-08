@@ -24,6 +24,7 @@ public static class DependencyInjection
 
         services.Configure<KubernetesSettings>(configuration.GetSection(KubernetesSettings.SectionName));
         services.AddScoped<IKubernetesService, KubernetesService>();
+        services.AddHostedService<StoreCleanupService>();
 
         return services;
     }
