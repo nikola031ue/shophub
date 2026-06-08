@@ -1,4 +1,6 @@
 using FluentAssertions;
+using Moq;
+using ShopHub.Application.Common.Interfaces;
 using ShopHub.Application.Stores.Commands.CreateStore;
 using ShopHub.Application.Stores.Commands.DeleteStore;
 using ShopHub.Application.Stores.Commands.UpdateStore;
@@ -13,12 +15,14 @@ namespace ShopHub.Tests.Unit.Stores;
 public class StoreCommandHandlerTests
 {
     private readonly Guid _userId = Guid.NewGuid();
+    private static IKubernetesService NoOpKubernetes() =>
+        Mock.Of<IKubernetesService>();
 
     [Fact]
     public async Task CreateStore_ShouldPersistAndReturnId()
     {
         using var db = DbContextFactory.Create();
-        var handler = new CreateStoreCommandHandler(db);
+        var handler = new CreateStoreCommandHandler(db, NoOpKubernetes());
 
         var id = await handler.Handle(
             new CreateStoreCommand("My Shop", StoreAvailability.Standard, "0xABC", DatabaseType.Standard, _userId),
@@ -32,7 +36,7 @@ public class StoreCommandHandlerTests
     public async Task CreateStore_ShouldSetStatusToPending()
     {
         using var db = DbContextFactory.Create();
-        var handler = new CreateStoreCommandHandler(db);
+        var handler = new CreateStoreCommandHandler(db, NoOpKubernetes());
 
         var id = await handler.Handle(
             new CreateStoreCommand("Shop", StoreAvailability.High, "0xABC", DatabaseType.Light, _userId),

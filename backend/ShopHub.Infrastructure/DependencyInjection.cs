@@ -22,6 +22,9 @@ public static class DependencyInjection
         services.AddScoped<IJwtService, JwtService>();
         services.AddSingleton<IPasswordHasher, BcryptPasswordHasher>();
 
+        services.Configure<KubernetesSettings>(configuration.GetSection(KubernetesSettings.SectionName));
+        services.AddScoped<IKubernetesService, KubernetesService>();
+
         return services;
     }
 }
