@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { getStores, deleteStore } from '../api/stores'
+import { useQuery } from '@tanstack/react-query'
+import { getStores } from '../api/stores'
 import { useAuth } from '../context/AuthContext'
 import { CreateStoreModal } from '../components/CreateStoreModal'
 import { ConfigureStoreModal } from '../components/ConfigureStoreModal'
+import { DeleteStoreModal } from '../components/DeleteStoreModal'
 import type { Store, StoreStatus } from '../types'
 
 const STATUS_CONFIG: Record<StoreStatus, { label: string; className: string }> = {
@@ -28,8 +29,8 @@ function StoreCard({
   onConfigure,
 }: {
   store: Store
-  onDelete: (id: string, name: string) => void
-  onConfigure: (id: string) => void
+  onDelete: (store: Store) => void
+  onConfigure: (store: Store) => void
 }) {
   const canOpen = store.status === 'Running' && store.url
 
@@ -60,14 +61,14 @@ function StoreCard({
           Otvori
         </button>
         <button
-          onClick={() => onConfigure(store.id)}
+          onClick={() => onConfigure(store)}
           disabled={store.status === 'Deleting'}
           className="flex-1 py-1.5 text-sm font-medium rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
           Konfiguriši
         </button>
         <button
-          onClick={() => onDelete(store.id, store.name)}
+          onClick={() => onDelete(store)}
           disabled={store.status === 'Deleting'}
           className="flex-1 py-1.5 text-sm font-medium rounded-lg bg-red-50 text-red-700 hover:bg-red-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
         >
@@ -96,44 +97,27 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 
 export function DashboardPage() {
   const { logout } = useAuth()
-  const queryClient = useQueryClient()
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [configureStore, setConfigureStore] = useState<Store | null>(null)
+  const [storeToConfig, setStoreToConfig] = useState<Store | null>(null)
+  const [storeToDelete, setStoreToDelete] = useState<Store | null>(null)
 
   const { data: stores = [], isLoading, isError } = useQuery({
     queryKey: ['stores'],
     queryFn: getStores,
   })
 
-  const deleteMutation = useMutation({
-    mutationFn: deleteStore,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['stores'] }),
-  })
-
-  function handleDelete(id: string, name: string) {
-    if (!window.confirm(`Obrisati prodavnicu "${name}"? Ova akcija je nepovratna.`)) return
-    deleteMutation.mutate(id)
-  }
-
-  function handleConfigure(id: string) {
-    const store = stores.find((s) => s.id === id) ?? null
-    setConfigureStore(store)
-  }
-
-  function handleCreate() {
-    setShowCreateModal(true)
-  }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {showCreateModal && <CreateStoreModal onClose={() => setShowCreateModal(false)} />}
-      {configureStore && <ConfigureStoreModal store={configureStore} onClose={() => setConfigureStore(null)} />}
+      {storeToConfig && <ConfigureStoreModal store={storeToConfig} onClose={() => setStoreToConfig(null)} />}
+      {storeToDelete && <DeleteStoreModal store={storeToDelete} onClose={() => setStoreToDelete(null)} />}
+
       <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">ShopHub</h1>
         <div className="flex items-center gap-3">
           {stores.length > 0 && (
             <button
-              onClick={handleCreate}
+              onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-xl hover:bg-indigo-700 transition-colors"
             >
               + Kreiraj prodavnicu
@@ -152,7 +136,7 @@ export function DashboardPage() {
         <div className="mb-6">
           <h2 className="text-xl font-semibold text-gray-900">Moje prodavnice</h2>
           {stores.length > 0 && (
-            <p className="text-sm text-gray-500 mt-0.5">{stores.length} prodavnic{stores.length === 1 ? 'a' : 'a'}</p>
+            <p className="text-sm text-gray-500 mt-0.5">{stores.length} prodavnica</p>
           )}
         </div>
 
@@ -171,7 +155,7 @@ export function DashboardPage() {
         )}
 
         {!isLoading && !isError && stores.length === 0 && (
-          <EmptyState onCreate={handleCreate} />
+          <EmptyState onCreate={() => setShowCreateModal(true)} />
         )}
 
         {!isLoading && !isError && stores.length > 0 && (
@@ -180,8 +164,8 @@ export function DashboardPage() {
               <StoreCard
                 key={store.id}
                 store={store}
-                onDelete={handleDelete}
-                onConfigure={handleConfigure}
+                onDelete={setStoreToDelete}
+                onConfigure={setStoreToConfig}
               />
             ))}
           </div>

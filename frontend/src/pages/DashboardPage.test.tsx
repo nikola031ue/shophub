@@ -11,6 +11,16 @@ import type { Store } from '../types'
 vi.mock('../api/stores', () => ({
   getStores: vi.fn(),
   deleteStore: vi.fn(),
+  updateStore: vi.fn(),
+  createStore: vi.fn(),
+  AvailabilityOptions: [
+    { label: 'Standard (2 replike)', value: 'Standard' },
+    { label: 'High (3 replike)', value: 'High' },
+  ],
+  DatabaseTypeOptions: [
+    { label: 'Standard (PostgreSQL)', value: 'Standard' },
+    { label: 'Light (Redis)', value: 'Light' },
+  ],
 }))
 
 const mockLogout = vi.fn()
@@ -88,22 +98,21 @@ describe('DashboardPage', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Otvori' })).not.toBeDisabled())
   })
 
-  it('calls deleteStore after confirm', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
-    vi.mocked(storesApi.getStores).mockResolvedValue([makeStore({ id: 'abc', name: 'Shop' })])
+  it('opens delete modal when Obriši is clicked', async () => {
+    vi.mocked(storesApi.getStores).mockResolvedValue([makeStore({ name: 'Moja Prodavnica' })])
     renderDashboard()
     await waitFor(() => screen.getByRole('button', { name: 'Obriši' }))
     await userEvent.click(screen.getByRole('button', { name: 'Obriši' }))
-    expect(vi.mocked(storesApi.deleteStore).mock.calls[0][0]).toBe('abc')
+    expect(screen.getByRole('heading', { name: 'Obriši prodavnicu' })).toBeInTheDocument()
+    expect(screen.getByText(/Ova akcija je nepovratna/)).toBeInTheDocument()
   })
 
-  it('does not call deleteStore when confirm is cancelled', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
-    vi.mocked(storesApi.getStores).mockResolvedValue([makeStore()])
+  it('opens configure modal when Konfiguriši is clicked', async () => {
+    vi.mocked(storesApi.getStores).mockResolvedValue([makeStore({ name: 'Moja Prodavnica' })])
     renderDashboard()
-    await waitFor(() => screen.getByRole('button', { name: 'Obriši' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Obriši' }))
-    expect(storesApi.deleteStore).not.toHaveBeenCalled()
+    await waitFor(() => screen.getByRole('button', { name: 'Konfiguriši' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Konfiguriši' }))
+    expect(screen.getByRole('button', { name: 'Sačuvaj' })).toBeInTheDocument()
   })
 
   it('calls logout when Odjavi se is clicked', async () => {
