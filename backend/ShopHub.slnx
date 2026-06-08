@@ -1,0 +1,8 @@
+<Solution>
+  <Project Path="ShopHub.Api/ShopHub.Api.csproj" />
+  <Project Path="ShopHub.Application/ShopHub.Application.csproj" />
+  <Project Path="ShopHub.Domain/ShopHub.Domain.csproj" />
+  <Project Path="ShopHub.Infrastructure/ShopHub.Infrastructure.csproj" />
+  <Project Path="ShopHub.Tests.Integration/ShopHub.Tests.Integration.csproj" />
+  <Project Path="ShopHub.Tests.Unit/ShopHub.Tests.Unit.csproj" />
+</Solution>
