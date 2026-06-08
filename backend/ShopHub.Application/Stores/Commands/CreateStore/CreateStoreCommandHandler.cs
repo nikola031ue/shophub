@@ -13,6 +13,7 @@ public class CreateStoreCommandHandler(IShopHubDbContext db, IKubernetesService 
         db.Stores.Add(store);
         await db.SaveChangesAsync(cancellationToken);
 
+        await kubernetes.CreateDatabaseAsync(store, cancellationToken);
         await kubernetes.CreateShopAsync(store, cancellationToken);
 
         return store.Id;

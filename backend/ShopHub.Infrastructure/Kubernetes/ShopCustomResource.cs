@@ -20,4 +20,11 @@ public class ShopSpec
 public class ShopDatabase
 {
     public string Type { get; set; } = string.Empty;
+    public ShopDatabaseSecretRef? ConnectionSecretRef { get; set; }
+}
+
+public class ShopDatabaseSecretRef
+{
+    public string Name { get; set; } = string.Empty;
+    public string Key { get; set; } = "connectionString";
 }
