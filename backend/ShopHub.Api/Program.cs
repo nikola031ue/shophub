@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using ShopHub.Api.Extensions;
 using ShopHub.Application;
 using ShopHub.Infrastructure;
 using ShopHub.Infrastructure.Persistence;
@@ -9,6 +11,7 @@ using ShopHub.Infrastructure.Settings;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
+builder.AddObservability();
 
 builder.Services.AddOpenApi();
 builder.Services.AddControllers()
@@ -56,6 +59,7 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
 }
 
+app.UseSerilogRequestLogging();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

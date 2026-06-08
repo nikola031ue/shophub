@@ -14,6 +14,8 @@ services:
       - Jwt__AccessTokenExpirationMinutes=60
       - Jwt__RefreshTokenExpirationDays=7
       - Cors__Origins__0=http://localhost:3001
+      - OpenTelemetry__Endpoint=http://host.docker.internal:4317
+      - OpenTelemetry__ServiceName=shophub
     depends_on:
       db:
         condition: service_healthy
