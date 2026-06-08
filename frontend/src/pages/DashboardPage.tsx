@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getStores, deleteStore } from '../api/stores'
 import { useAuth } from '../context/AuthContext'
 import { CreateStoreModal } from '../components/CreateStoreModal'
+import { ConfigureStoreModal } from '../components/ConfigureStoreModal'
 import type { Store, StoreStatus } from '../types'
 
 const STATUS_CONFIG: Record<StoreStatus, { label: string; className: string }> = {
@@ -97,6 +98,7 @@ export function DashboardPage() {
   const { logout } = useAuth()
   const queryClient = useQueryClient()
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [configureStore, setConfigureStore] = useState<Store | null>(null)
 
   const { data: stores = [], isLoading, isError } = useQuery({
     queryKey: ['stores'],
@@ -113,8 +115,9 @@ export function DashboardPage() {
     deleteMutation.mutate(id)
   }
 
-  function handleConfigure(_id: string) {
-    // TODO (#52): otvori modal za konfiguraciju
+  function handleConfigure(id: string) {
+    const store = stores.find((s) => s.id === id) ?? null
+    setConfigureStore(store)
   }
 
   function handleCreate() {
@@ -124,6 +127,7 @@ export function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {showCreateModal && <CreateStoreModal onClose={() => setShowCreateModal(false)} />}
+      {configureStore && <ConfigureStoreModal store={configureStore} onClose={() => setConfigureStore(null)} />}
       <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">ShopHub</h1>
         <div className="flex items-center gap-3">
