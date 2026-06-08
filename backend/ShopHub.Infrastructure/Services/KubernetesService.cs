@@ -19,17 +19,15 @@ public class KubernetesService(IOptions<KubernetesSettings> options, ILogger<Kub
     private static string CnpgClusterName(Guid storeId) => $"shop-{storeId}-db";
     private static string CnpgSecretName(Guid storeId) => $"{CnpgClusterName(storeId)}-app";
 
+    // REDB secret name (set via spec.databaseSecretName)
+    private static string RedbName(Guid storeId) => $"shop-{storeId}-redis";
+    private static string RedbSecretName(Guid storeId) => $"shop-{storeId}-redis-creds";
+
     public async Task CreateDatabaseAsync(Store store, CancellationToken cancellationToken = default)
     {
         if (!_settings.Enabled)
         {
             logger.LogInformation("Kubernetes integration disabled. Skipping CNPG Cluster creation for store {StoreId}.", store.Id);
-            return;
-        }
-
-        if (store.DatabaseType != DatabaseType.Standard)
-        {
-            logger.LogInformation("Store {StoreId} uses non-PostgreSQL database. Skipping CNPG Cluster creation.", store.Id);
             return;
         }
 
@@ -40,22 +38,14 @@ public class KubernetesService(IOptions<KubernetesSettings> options, ILogger<Kub
 
             await EnsureNamespaceAsync(client, namespaceName, cancellationToken);
 
-            var cluster = BuildCnpgCluster(store, namespaceName);
-            await client.CustomObjects.CreateNamespacedCustomObjectAsync(
-                cluster,
-                _settings.Cnpg.Group,
-                _settings.Cnpg.Version,
-                namespaceName,
-                _settings.Cnpg.Plural,
-                cancellationToken: cancellationToken);
-
-            logger.LogInformation(
-                "Created CNPG Cluster {Name} in namespace {Namespace} for store {StoreId}.",
-                cluster.Metadata.Name, namespaceName, store.Id);
+            if (store.DatabaseType == DatabaseType.Standard)
+                await CreateCnpgClusterAsync(client, store, namespaceName, cancellationToken);
+            else
+                await CreateRedbAsync(client, store, namespaceName, cancellationToken);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to create CNPG Cluster for store {StoreId}.", store.Id);
+            logger.LogError(ex, "Failed to create database CR for store {StoreId}.", store.Id);
         }
     }
 
@@ -96,6 +86,60 @@ public class KubernetesService(IOptions<KubernetesSettings> options, ILogger<Kub
     private string BuildNamespace(Guid userId) =>
         $"{_settings.NamespacePrefix}-{userId}";
 
+    private async Task CreateCnpgClusterAsync(IKubernetes client, Store store, string namespaceName, CancellationToken cancellationToken)
+    {
+        var cluster = BuildCnpgCluster(store, namespaceName);
+        await client.CustomObjects.CreateNamespacedCustomObjectAsync(
+            cluster,
+            _settings.Cnpg.Group,
+            _settings.Cnpg.Version,
+            namespaceName,
+            _settings.Cnpg.Plural,
+            cancellationToken: cancellationToken);
+
+        logger.LogInformation(
+            "Created CNPG Cluster {Name} in namespace {Namespace} for store {StoreId}.",
+            cluster.Metadata.Name, namespaceName, store.Id);
+    }
+
+    private async Task CreateRedbAsync(IKubernetes client, Store store, string namespaceName, CancellationToken cancellationToken)
+    {
+        var redb = BuildRedb(store, namespaceName);
+        await client.CustomObjects.CreateNamespacedCustomObjectAsync(
+            redb,
+            _settings.Redb.Group,
+            _settings.Redb.Version,
+            namespaceName,
+            _settings.Redb.Plural,
+            cancellationToken: cancellationToken);
+
+        logger.LogInformation(
+            "Created REDB {Name} in namespace {Namespace} for store {StoreId}.",
+            redb.Metadata.Name, namespaceName, store.Id);
+    }
+
+    private RedbCustomResource BuildRedb(Store store, string namespaceName) => new()
+    {
+        ApiVersion = $"{_settings.Redb.Group}/{_settings.Redb.Version}",
+        Kind = "RedisEnterpriseDatabase",
+        Metadata = new V1ObjectMeta
+        {
+            Name = RedbName(store.Id),
+            NamespaceProperty = namespaceName,
+            Labels = new Dictionary<string, string>
+            {
+                ["app.kubernetes.io/managed-by"] = "shophub",
+                ["shophub.io/store-id"] = store.Id.ToString(),
+                ["shophub.io/user-id"] = store.UserId.ToString(),
+            }
+        },
+        Spec = new RedbSpec
+        {
+            MemorySize = _settings.Redb.MemorySize,
+            DatabaseSecretName = RedbSecretName(store.Id)
+        }
+    };
+
     private CnpgClusterCustomResource BuildCnpgCluster(Store store, string namespaceName) => new()
     {
         ApiVersion = $"{_settings.Cnpg.Group}/{_settings.Cnpg.Version}",
@@ -125,14 +169,9 @@ public class KubernetesService(IOptions<KubernetesSettings> options, ILogger<Kub
             Type = store.DatabaseType == DatabaseType.Standard ? "postgresql" : "redis"
         };
 
-        if (store.DatabaseType == DatabaseType.Standard)
-        {
-            database.ConnectionSecretRef = new ShopDatabaseSecretRef
-            {
-                Name = CnpgSecretName(store.Id),
-                Key = "connectionString"
-            };
-        }
+        database.ConnectionSecretRef = store.DatabaseType == DatabaseType.Standard
+            ? new ShopDatabaseSecretRef { Name = CnpgSecretName(store.Id), Key = "connectionString" }
+            : new ShopDatabaseSecretRef { Name = RedbSecretName(store.Id), Key = "password" };
 
         return new ShopCustomResource
         {
