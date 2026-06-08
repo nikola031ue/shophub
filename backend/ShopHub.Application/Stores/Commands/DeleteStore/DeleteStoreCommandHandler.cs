@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using ShopHub.Application.Common.Interfaces;
+using ShopHub.Domain.Enums;
 
 namespace ShopHub.Application.Stores.Commands.DeleteStore;
 
@@ -13,7 +14,7 @@ public class DeleteStoreCommandHandler(IShopHubDbContext db) : IRequestHandler<D
 
         if (store is null) return false;
 
-        db.Stores.Remove(store);
+        store.SetStatus(StoreStatus.Deleting);
         await db.SaveChangesAsync(cancellationToken);
         return true;
     }
