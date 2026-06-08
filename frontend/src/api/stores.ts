@@ -13,9 +13,9 @@ export async function getStore(id: string): Promise<Store> {
 
 export interface CreateStorePayload {
   name: string
-  availability: number
+  availability: StoreAvailability
   walletAddress: string
-  databaseType: number
+  databaseType: DatabaseType
 }
 
 export async function createStore(payload: CreateStorePayload): Promise<{ id: string }> {
@@ -24,7 +24,7 @@ export async function createStore(payload: CreateStorePayload): Promise<{ id: st
 }
 
 export interface UpdateStorePayload {
-  availability: number
+  availability: StoreAvailability
   walletAddress: string
 }
 
@@ -36,12 +36,12 @@ export async function deleteStore(id: string): Promise<void> {
   await client.delete(`/stores/${id}`)
 }
 
-export const AvailabilityOptions: { label: string; value: number; key: StoreAvailability }[] = [
-  { label: 'Standard (2 replike)', value: 2, key: 'Standard' },
-  { label: 'High (3 replike)', value: 3, key: 'High' },
+export const AvailabilityOptions: { label: string; value: StoreAvailability }[] = [
+  { label: 'Standard (2 replike)', value: 'Standard' },
+  { label: 'High (3 replike)', value: 'High' },
 ]
 
-export const DatabaseTypeOptions: { label: string; value: number; key: DatabaseType }[] = [
-  { label: 'Standard (PostgreSQL)', value: 0, key: 'Standard' },
-  { label: 'Light (Redis)', value: 1, key: 'Light' },
+export const DatabaseTypeOptions: { label: string; value: DatabaseType }[] = [
+  { label: 'Standard (PostgreSQL)', value: 'Standard' },
+  { label: 'Light (Redis)', value: 'Light' },
 ]

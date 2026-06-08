@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { getStores, deleteStore } from '../api/stores'
 import { useAuth } from '../context/AuthContext'
+import { CreateStoreModal } from '../components/CreateStoreModal'
 import type { Store, StoreStatus } from '../types'
 
 const STATUS_CONFIG: Record<StoreStatus, { label: string; className: string }> = {
@@ -94,6 +96,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 export function DashboardPage() {
   const { logout } = useAuth()
   const queryClient = useQueryClient()
+  const [showCreateModal, setShowCreateModal] = useState(false)
 
   const { data: stores = [], isLoading, isError } = useQuery({
     queryKey: ['stores'],
@@ -115,11 +118,12 @@ export function DashboardPage() {
   }
 
   function handleCreate() {
-    // TODO (#51): otvori modal za kreiranje
+    setShowCreateModal(true)
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {showCreateModal && <CreateStoreModal onClose={() => setShowCreateModal(false)} />}
       <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
         <h1 className="text-lg font-bold text-gray-900">ShopHub</h1>
         <div className="flex items-center gap-3">
